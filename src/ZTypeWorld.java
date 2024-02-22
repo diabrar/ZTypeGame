@@ -1,8 +1,7 @@
+import javalib.worldcanvas.WorldCanvas;
 import tester.*;
 import javalib.worldimages.*;
 import javalib.funworld.*;
-import javalib.worldcanvas.WorldCanvas;
-
 import java.awt.Color;
 import java.util.Random;
 
@@ -11,6 +10,7 @@ interface IZTypeWorld {
   int SCREEN_HEIGHT = 500;
   int SCREEN_WIDTH = 500;
   int TEXT_SIZE = 20;
+  double TICK = 2;
   Color BACKGROUND_COLOR = Color.BLACK;
   Color ACTIVEWORD_COLOR = Color.BLUE;
   Color INACTIVEWORD_COLOR = Color.GRAY;
@@ -20,9 +20,7 @@ interface IZTypeWorld {
 
 // to represent a world for this ZType game.
 class ZTypeWorld extends World implements IZTypeWorld {
-  ILoWord activeWords;
-  ILoWord inactiveWords;
-
+  ILoWord words;
   Random rand;
 
   /* TEMPLATE
@@ -42,51 +40,71 @@ class ZTypeWorld extends World implements IZTypeWorld {
    ... this.inactiveWords.draw(WorldScene) ...     -- WorldScene
    */
 
-  ZTypeWorld(ILoWord activeWords, ILoWord inactiveWords) {
-    this.rand = new Random();
-    this.activeWords = activeWords;
-    this.inactiveWords = inactiveWords;
+  ZTypeWorld(ILoWord words, Random rand) {
+    this.rand = rand;
+    this.words = words;
   }
 
-  ZTypeWorld(ILoWord activeWords, ILoWord inactiveWords, Random rand) {
-    this.rand = rand;
-    this.activeWords = activeWords;
-    this.inactiveWords = inactiveWords;
+  ZTypeWorld(ILoWord words) {
+    this(words, new Random());
   }
 
   // returns the current WorldScene
   public WorldScene makeScene() {
-    return this.activeWords.draw(
-        this.inactiveWords.draw(
+    return this.words.draw(
             new WorldScene(SCREEN_WIDTH, SCREEN_HEIGHT)
-            .placeImageXY(new RectangleImage(SCREEN_WIDTH, SCREEN_HEIGHT, "solid", BACKGROUND_COLOR)
-                , 250, 250)));
+                .placeImageXY(new RectangleImage(SCREEN_WIDTH, SCREEN_HEIGHT,
+                    "solid", BACKGROUND_COLOR), 250, 250));
   }
 
-  //Handles key events
+  //move the Words on the scene and adds a new word at a random location on every tick.
+  public World onTick() {
+    ILoWord add = new ConsLoWord(new InactiveWord(new Utils().generateWord(this.rand),
+        new Utils().randomNum(50, 450), new Utils().randomNum(50, 200)), this.words);
+    return new ZTypeWorld(add.move());
+  }
+
+  // move the Words on the scene and adds a new word at a pseudo-random location on every tick
+  // JUST for the tests :)
+  public World onTickForTesting() {
+    ILoWord add = new ConsLoWord(new InactiveWord(new Utils().generateWord(new Random(2)),
+    50, 100), this.words);
+    return new ZTypeWorld(add.move());
+  }
+
+  // Handles key events
   public ZTypeWorld onKeyEvent(String key) {
     if (!key.isEmpty()) {
-      return new ZTypeWorld(this.activeWords.checkAndReduce(key), this.inactiveWords.checkAndReduce(key));
+      return new ZTypeWorld(this.words.checkAndReduce(key).filterOutEmpties());
     } else {
       return this;
     }
   }
 
-  //Handles tick events
-  public ZTypeWorld onTick() {
-    Utils utils = new Utils();
-    return new ZTypeWorld(this.activeWords.addToEnd(new ActiveWord(utils.generateWord(new Random()),
-        250, 0)), this.inactiveWords);
+  // Check if any word has reached the bottom of the screen
+  public boolean gameOver() {
+    return this.words.anyWordAtBottom();
   }
 
-  public boolean gameOver() {
-    // Check if any word has reached the bottom of the screen
-    return this.activeWords.anyWordAtBottom();
+  // produce the ending scene.
+  public WorldScene finalScene() {
+    return new WorldScene(SCREEN_WIDTH, SCREEN_HEIGHT)
+               .placeImageXY(new RectangleImage(SCREEN_WIDTH, SCREEN_HEIGHT, "solid", BACKGROUND_COLOR),
+                   250, 250)
+               .placeImageXY(new TextImage("Game over!", 70, Color.RED), 240, 200)
+               .placeImageXY(new TextImage("nice try :)", 40, Color.WHITE), 240, 300);
+  }
+
+  // end the game!
+  public WorldEnd worldEnds() {
+    if (this.gameOver()) {
+      return new WorldEnd(true, this.finalScene());
+    } else {
+      return new WorldEnd(false, this.makeScene());
+    }
   }
 
 }
-
-
 
 class Utils {
   /* TEMPLATE
@@ -94,6 +112,7 @@ class Utils {
    * METHODS
    ... this.generateWord(Random) ...          -- String
    ... this.generateWordAcc(Random, String) ..  -- String
+   ... this.randomNum(int, int) ...      -- int
    */
 
   // returns a random word of 6 characters.
@@ -113,6 +132,11 @@ class Utils {
       return generateWordAcc(rand, next);
     }
   }
+
+  public int randomNum(int min, int max) {
+    return (int) (Math.random() * (max-min + 1)) + min;
+  }
+
 }
 
 // examples and tests
@@ -132,26 +156,36 @@ class ExamplesZTypeWorld {
       new MtLoWord());
   ILoWord empty = new MtLoWord();
 
+  ILoWord activeAndInactive = new ConsLoWord(new InactiveWord("playful", 100, 400),
+      new ConsLoWord(new InactiveWord("glasses", 300, 200),
+          new ConsLoWord(new InactiveWord("virtual", 50, 320),
+              new ConsLoWord(new ActiveWord("mother", 300, 100),
+                  new ConsLoWord(new ActiveWord("food", 230, 200),
+                      new ConsLoWord(new ActiveWord("popcorn", 180, 400), new MtLoWord()))))));
+
+  ILoWord shortActInact = new ConsLoWord(new InactiveWord("play", 300, 100),
+      new ConsLoWord(new ActiveWord("father", 300, 200), new MtLoWord()));
+
   // world examples
-  ZTypeWorld world1 = new ZTypeWorld(active, inactive);
-  ZTypeWorld smallWorld = new ZTypeWorld(shortActive, shortInactive, new Random(1));
-  ZTypeWorld smallWorldDiffRand = new ZTypeWorld(shortActive, shortInactive, new Random(2));
-  ZTypeWorld emptyWorld = new ZTypeWorld(empty, empty);
+  ZTypeWorld world1 = new ZTypeWorld(this.activeAndInactive);
+  ZTypeWorld smallWorld = new ZTypeWorld(this.shortActInact, new Random(1));
+  ZTypeWorld smallWorldDiffRand = new ZTypeWorld(this.shortActInact, new Random(2));
+  ZTypeWorld emptyWorld = new ZTypeWorld(empty);
 
   // to test the MakeScene() method.
   boolean testMakeScene(Tester t) {
     return t.checkExpect(smallWorld.makeScene(),
         new WorldScene(IZTypeWorld.SCREEN_WIDTH, IZTypeWorld.SCREEN_HEIGHT)
-        .placeImageXY(new RectangleImage(IZTypeWorld.SCREEN_WIDTH, IZTypeWorld.SCREEN_HEIGHT,
-            "solid", IZTypeWorld.BACKGROUND_COLOR), 250, 250)
-        .placeImageXY(
-            new TextImage("play", IZTypeWorld.TEXT_SIZE, IZTypeWorld.INACTIVEWORD_COLOR),
-            300, 100)
-        .placeImageXY(
-            new TextImage("father", IZTypeWorld.TEXT_SIZE, IZTypeWorld.ACTIVEWORD_COLOR),
-            300, 200))
-        && t.checkExpect(world1.makeScene(),
-            new WorldScene(IZTypeWorld.SCREEN_WIDTH, IZTypeWorld.SCREEN_HEIGHT)
+            .placeImageXY(new RectangleImage(IZTypeWorld.SCREEN_WIDTH, IZTypeWorld.SCREEN_HEIGHT,
+                "solid", IZTypeWorld.BACKGROUND_COLOR), 250, 250)
+            .placeImageXY(
+                new TextImage("play", IZTypeWorld.TEXT_SIZE, IZTypeWorld.INACTIVEWORD_COLOR),
+                300, 100)
+            .placeImageXY(
+                new TextImage("father", IZTypeWorld.TEXT_SIZE, IZTypeWorld.ACTIVEWORD_COLOR),
+                300, 200))
+               && t.checkExpect(world1.makeScene(),
+        new WorldScene(IZTypeWorld.SCREEN_WIDTH, IZTypeWorld.SCREEN_HEIGHT)
             .placeImageXY(new RectangleImage(IZTypeWorld.SCREEN_WIDTH, IZTypeWorld.SCREEN_HEIGHT,
                 "solid", IZTypeWorld.BACKGROUND_COLOR), 250, 250)
             .placeImageXY(
@@ -172,8 +206,8 @@ class ExamplesZTypeWorld {
             .placeImageXY(
                 new TextImage("popcorn", IZTypeWorld.TEXT_SIZE, IZTypeWorld.ACTIVEWORD_COLOR),
                 180, 400))
-        && t.checkExpect(emptyWorld.makeScene(),
-            new WorldScene(IZTypeWorld.SCREEN_WIDTH, IZTypeWorld.SCREEN_HEIGHT)
+               && t.checkExpect(emptyWorld.makeScene(),
+        new WorldScene(IZTypeWorld.SCREEN_WIDTH, IZTypeWorld.SCREEN_HEIGHT)
             .placeImageXY(new RectangleImage(IZTypeWorld.SCREEN_WIDTH, IZTypeWorld.SCREEN_HEIGHT,
                 "solid", IZTypeWorld.BACKGROUND_COLOR), 250, 250));
   }
@@ -181,72 +215,35 @@ class ExamplesZTypeWorld {
   // to test the generateWord() method.
   boolean testGenerateWord(Tester t) {
     return t.checkExpect(new Utils().generateWord(new Random(1)), "knwnee")
-        && t.checkExpect(new Utils().generateWord(new Random(2)), "iwproa")
-        && t.checkExpect(new Utils().generateWord(new Random(3)), "jkkgdc");
+               && t.checkExpect(new Utils().generateWord(new Random(2)), "iwproa")
+               && t.checkExpect(new Utils().generateWord(new Random(3)), "jkkgdc");
   }
 
-  //to actually run and see the results of the makeScene() method.
+  // to test the generateWordAcc() method.
+  boolean testGenerateWordAcc(Tester t) {
+    return t.checkExpect(new Utils().generateWordAcc(new Random(1), ""), "knwnee")
+        && t.checkExpect(new Utils().generateWordAcc(new Random(2), "i"), "iiwpro")
+        && t.checkExpect(new Utils().generateWordAcc(new Random(3), "hel"), "heljkk");
+  }
+  boolean testOnTick(Tester t) {
+    return t.checkExpect(emptyWorld.onTickForTesting(), new ZTypeWorld(new ConsLoWord(
+        new InactiveWord(new Utils().generateWord(new Random(2)), 50, 105), new MtLoWord())));
+  }
+
+  boolean testOnKeyEvent(Tester t) {
+    return t.checkExpect(smallWorld.onKeyEvent("p"),
+        new ZTypeWorld(new ConsLoWord(new ActiveWord("lay", 300, 100),
+            new ConsLoWord(new ActiveWord("father", 300, 200), new MtLoWord()))));
+  }
+
+  // to actually run and see the results of the makeScene() method.
   boolean testScene(Tester t) {
     WorldCanvas c1 = new WorldCanvas(500, 500);
     return c1.drawScene(world1.makeScene()) && c1.show();
   }
 
-  //Test method to simulate key press events
-  boolean testKeyEventM(Tester t) {
-    ZTypeWorld newWorld = world1.onKeyEvent("m"); 
-    WorldCanvas canvas = new WorldCanvas(500, 500);
-    return canvas.drawScene(newWorld.makeScene()) && canvas.show();
+  boolean testBigBang(Tester t) {
+    return emptyWorld.bigBang(IZTypeWorld.SCREEN_WIDTH, IZTypeWorld.SCREEN_HEIGHT, IZTypeWorld.TICK);
   }
 
-
-  // Test method to simulate tick events
-  boolean testTickEvent(Tester t) {
-    ZTypeWorld newWorld = world1.onTick(); 
-    WorldCanvas canvas = new WorldCanvas(500, 500);
-    return canvas.drawScene(newWorld.makeScene()) && canvas.show();
-  }
-
-
-  //Test for the gameOver() method 
-  boolean testGameOverWithActiveWords(Tester t) {
-    return t.checkExpect(world1.gameOver(), false)
-        && t.checkExpect(emptyWorld.gameOver(), false)
-        && t.checkExpect(smallWorld.gameOver(), false);
-  }
-
-  //Test for the gameOver() method when there are no active words at the bottom
-  boolean testGameOverNoActiveWords(Tester t) {
-    return t.checkExpect(world1.onTick().onTick().gameOver(), false)
-        && t.checkExpect(emptyWorld.onTick().gameOver(), false)
-        && t.checkExpect(smallWorld.onTick().onTick().onTick().onTick().onTick().gameOver(), false);
-  }
-
-  //Test for the onKeyEvent() method when a key matches an active word
-  boolean testOnKeyEventMatch(Tester t) {
-    return t.checkExpect(world1.onKeyEvent("m"), new ZTypeWorld(
-        new ConsLoWord(new ActiveWord("other", 300, 100),
-            new ConsLoWord(new ActiveWord("food", 230, 200),
-                new ConsLoWord(new ActiveWord("popcorn", 180, 400), new MtLoWord()))),
-        new ConsLoWord(new InactiveWord("playful", 100, 400),
-            new ConsLoWord(new InactiveWord("glasses", 300, 200),
-                new ConsLoWord(new InactiveWord("virtual", 50, 320), new MtLoWord())))));
-  }
-
-  //Test for the onKeyEvent() method when a key does not match any active word
-  boolean testOnKeyEventNoMatch(Tester t) {
-    return t.checkExpect(world1.onKeyEvent("x"), world1)
-        && t.checkExpect(emptyWorld.onKeyEvent("a"), emptyWorld);
-  }
-
-  //Test for the onTick() method to ensure a new active word is added
-  boolean testOnTick(Tester t) {
-    return t.checkExpect(world1.onTick(), new ZTypeWorld(
-        new ConsLoWord(new ActiveWord("mother", 300, 100),
-            new ConsLoWord(new ActiveWord("food", 230, 200),
-                new ConsLoWord(new ActiveWord("popcorn", 180, 400),
-                    new ConsLoWord(new ActiveWord("iwproa", 250, 0), new MtLoWord())))),
-        new ConsLoWord(new InactiveWord("playful", 100, 400),
-            new ConsLoWord(new InactiveWord("glasses", 300, 200),
-                new ConsLoWord(new InactiveWord("virtual", 50, 320), new MtLoWord())))));
-  }
 }

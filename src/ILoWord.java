@@ -23,8 +23,11 @@ interface ILoWord {
   // returns a WorldScene with all words in this ILoWord drawn onto the given
   // WorldScene.
   WorldScene draw(WorldScene world);
-  
-//anyWordAtBottom : ILoWord -> boolean
+
+  // moves each word in this ILoWord.
+  ILoWord move();
+
+  // anyWordAtBottom : ILoWord -> boolean
   // returns true if any word in this list is at the bottom of the screen
   boolean anyWordAtBottom();
 
@@ -41,6 +44,7 @@ class MtLoWord implements ILoWord {
    ... this.addToEnd(IWord) ...              -- ILoWord
    ... this.filterOutEmpties() ...           -- ILoWord
    ... this.draw(WorldScene) ...             -- WorldScene
+   ... this.move() ...                       -- ILoWord
    */
 
   // returns this empty list.
@@ -78,6 +82,12 @@ class MtLoWord implements ILoWord {
     return world;
   }
 
+  // empty list has no words to move.
+  public ILoWord move() {
+    return this;
+  }
+
+  // empty list has no words.
   public boolean anyWordAtBottom() {
     return false;
   }
@@ -116,7 +126,10 @@ class ConsLoWord implements ILoWord {
     /* TEMPLATE
      * EVERYTHING IN THE CLASS TEMPLATE *
      */
-    return new ConsLoWord(this.first.checkLetter(letter), this.rest.checkAndReduce(letter));
+    if (this.first.firstWithLet(letter)) {
+      return new ConsLoWord(this.first.checkLetter(letter), this.rest);
+    }
+    return new ConsLoWord(this.first, this.rest.checkAndReduce(letter));
   }
 
   // returns a new ILoWord like this one but with word added to the end.
@@ -152,9 +165,14 @@ class ConsLoWord implements ILoWord {
     return this.rest.draw(this.first.createWorld(world));
   }
 
+  // empty list has no words to move.
+  public ILoWord move() {
+    return new ConsLoWord(this.first.moveWord(), this.rest.move());
+  }
+
   public boolean anyWordAtBottom() {
     return this.first.atBottom() || this.rest.anyWordAtBottom();
-}
+  }
 
 }
 
@@ -174,26 +192,17 @@ interface IWord {
   boolean checkEmpty();
 
   // createWorld : IWord WorldScene -> WorldScene
-  
   // adds this IWord to the given WorldScene.
   WorldScene createWorld(WorldScene initWorld);
- 
 
-  int x();
-
-  int y();
-
-  // returns true if this word starts with the given letter.
-  boolean startWith(String letter);
+  // moves this word down the y-axis.
+  IWord moveWord();
 
   // returns true if this word is at the bottom of the screen.
   boolean atBottom();
 
-  // reduces this word by one letter.
-  IWord reduce();
-
-  // draws this word onto the given WorldScene.
-  WorldScene draw(WorldScene world);
+  // returns true if the word starts with the given letter.
+  boolean firstWithLet(String letter);
 }
 
 //represents an active word in the ZType game
@@ -212,6 +221,7 @@ class ActiveWord implements IWord {
    ... this.checkLetter(String) ...               -- IWord
    ... this.checkEmpty() ...                      -- boolean
    ... this.createWorld(WorldScene) ...           -- WorldScene
+   ... this.becomeActive(String) ...              -- boolean
    */
 
   ActiveWord(String word, int x, int y) {
@@ -231,10 +241,17 @@ class ActiveWord implements IWord {
     /* TEMPLATE
      * EVERYTHING IN THE CLASS TEMPLATE *
      */
-    if (this.word.substring(0, 1).equals(letter)) {
+    if (!this.word.isEmpty() && this.firstWithLet(letter)) {
       return new ActiveWord(this.word.substring(1), this.x, this.y);
     }
     return this;
+  }
+
+  public boolean firstWithLet(String letter) {
+    if (!this.word.isEmpty()) {
+      return this.word.substring(0,1).equals(letter);
+    }
+    return false;
   }
 
   public boolean checkEmpty() {
@@ -253,57 +270,21 @@ class ActiveWord implements IWord {
     return initWorld.placeImageXY(new TextImage(this.word, 20, IZTypeWorld.ACTIVEWORD_COLOR),
         this.x, this.y);
   }
-  
 
-  // returns the x coordinate of this word.
-  public int x() {
-      /* TEMPLATE
-       * EVERYTHING IN THE CLASS TEMPLATE *
-       */
-      return this.x;
-  }
-
-  // returns the y coordinate of this word.
-  public int y() {
-      /* TEMPLATE
-       * EVERYTHING IN THE CLASS TEMPLATE *
-       */
-      return this.y;
-  }
-
-  // returns true if this word starts with the given letter.
-  public boolean startWith(String letter) {
-      /* TEMPLATE
-       * EVERYTHING IN THE CLASS TEMPLATE *
-       */
-      return this.word.startsWith(letter);
+  // returns an ActiveWord like this one, but shifted down 5.
+  public IWord moveWord() {
+    return new ActiveWord(this.word, this.x, this.y + 10);
   }
 
   // returns true if this word is at the bottom of the screen.
   public boolean atBottom() {
-      /* TEMPLATE
-       * EVERYTHING IN THE CLASS TEMPLATE *
-       */
-      return this.y >= IZTypeWorld.SCREEN_HEIGHT;
+    /* TEMPLATE
+     * EVERYTHING IN THE CLASS TEMPLATE *
+     */
+    return this.y >= IZTypeWorld.SCREEN_HEIGHT;
   }
 
-  // returns a new ActiveWord with one letter reduced.
-  public IWord reduce() {
-      /* TEMPLATE
-       * EVERYTHING IN THE CLASS TEMPLATE *
-       */
-      return new ActiveWord(this.word.substring(1), this.x, this.y);
-  }
-
-  // draws this word onto the given WorldScene.
-  public WorldScene draw(WorldScene world) {
-      /* TEMPLATE
-       * EVERYTHING IN THE CLASS TEMPLATE *
-       */
-      return world.placeImageXY(new TextImage(this.word, IZTypeWorld.TEXT_SIZE, IZTypeWorld.ACTIVEWORD_COLOR), this.x, this.y);
-  }
 }
-
 
 //represents an inactive word in the ZType game
 class InactiveWord implements IWord {
@@ -340,10 +321,14 @@ class InactiveWord implements IWord {
     /* TEMPLATE
      * EVERYTHING IN THE CLASS TEMPLATE *
      */
-    if (!this.word.equals("") && this.word.substring(0, 1).equals(letter)) {
-      return new InactiveWord(this.word.substring(1), this.x, this.y);
+    if (!this.word.isEmpty() && this.firstWithLet(letter)) {
+      return new ActiveWord(this.word.substring(1), this.x, this.y);
     }
     return this;
+  }
+
+  public boolean firstWithLet(String letter) {
+    return this.word.substring(0,1).equals(letter);
   }
 
   public boolean checkEmpty() {
@@ -362,53 +347,18 @@ class InactiveWord implements IWord {
     return initWorld.placeImageXY(new TextImage(this.word, 20, IZTypeWorld.INACTIVEWORD_COLOR),
         this.x, this.y);
   }
-  
-//returns the x coordinate of this word.
-  public int x() {
-      /* TEMPLATE
-       * EVERYTHING IN THE CLASS TEMPLATE *
-       */
-      return this.x;
-  }
 
-  // returns the y coordinate of this word.
-  public int y() {
-      /* TEMPLATE
-       * EVERYTHING IN THE CLASS TEMPLATE *
-       */
-      return this.y;
-  }
-
-  // returns true if this word starts with the given letter.
-  public boolean startWith(String letter) {
-      /* TEMPLATE
-       * EVERYTHING IN THE CLASS TEMPLATE *
-       */
-      return this.word.startsWith(letter);
+  // returns a new InactiveWord like this one, but shifted down 5.
+  public IWord moveWord() {
+    return new InactiveWord(this.word, this.x, this.y + 10);
   }
 
   // returns true if this word is at the bottom of the screen.
   public boolean atBottom() {
-      /* TEMPLATE
-       * EVERYTHING IN THE CLASS TEMPLATE *
-       */
-      return this.y >= IZTypeWorld.SCREEN_HEIGHT;
-  }
-
-  // returns a new InactiveWord with one letter reduced.
-  public IWord reduce() {
-      /* TEMPLATE
-       * EVERYTHING IN THE CLASS TEMPLATE *
-       */
-      return new InactiveWord(this.word.substring(1), this.x, this.y);
-  }
-
-  // draws this word onto the given WorldScene.
-  public WorldScene draw(WorldScene world) {
-      /* TEMPLATE
-       * EVERYTHING IN THE CLASS TEMPLATE *
-       */
-      return world.placeImageXY(new TextImage(this.word, IZTypeWorld.TEXT_SIZE, IZTypeWorld.INACTIVEWORD_COLOR), this.x, this.y);
+    /* TEMPLATE
+     * EVERYTHING IN THE CLASS TEMPLATE *
+     */
+    return this.y >= IZTypeWorld.SCREEN_HEIGHT;
   }
 
 }
@@ -448,49 +398,50 @@ class ExamplesWordLists {
 
   // starting WorldScene
   WorldScene start = new WorldScene(500, 500)
-      .placeImageXY(new RectangleImage(500, 500, "solid", Color.BLACK), 250, 250);
+                         .placeImageXY(new RectangleImage(
+                             500, 500, "solid", Color.BLACK), 250, 250);
 
 
   // to test the checkAndReduce() method
   boolean testCheckAndReduce(Tester t) {
     return t.checkExpect(empty.checkAndReduce("a"), empty)
-        && t.checkExpect(list2.checkAndReduce("p"),
-            new ConsLoWord(marine, new ConsLoWord(new ActiveWord("lant", 10, 10), empty)))
-        && t.checkExpect(list2.checkAndReduce("a"), list2)
-        && t.checkExpect(inactiveWords.checkAndReduce("b"), inactiveWords)
-        && t.checkExpect(mixedWords.checkAndReduce("a"), mixedWords)
-        && t.checkExpect(mixedWords.checkAndReduce("s"),
-            new ConsLoWord(new InactiveWord("andwich", 50, 50), new ConsLoWord(palace,
-                new ConsLoWord(new ActiveWord("hop", 15, 5), list2))));
+               && t.checkExpect(list2.checkAndReduce("p"),
+        new ConsLoWord(marine, new ConsLoWord(new ActiveWord("lant", 10, 10), empty)))
+               && t.checkExpect(list2.checkAndReduce("a"), list2)
+               && t.checkExpect(inactiveWords.checkAndReduce("b"), inactiveWords)
+               && t.checkExpect(mixedWords.checkAndReduce("a"), mixedWords)
+               && t.checkExpect(mixedWords.checkAndReduce("s"),
+        new ConsLoWord(new ActiveWord("andwich", 50, 50), new ConsLoWord(palace,
+            new ConsLoWord(new ActiveWord("shop", 15, 5), list2))));
   }
 
   // to test the addToEnd() method
   boolean testAddToEnd(Tester t) {
     return t.checkExpect(empty.addToEnd(landscape), new ConsLoWord(landscape, empty))
-        && t.checkExpect(list1.addToEnd(landscape), new ConsLoWord(plant,
-            new ConsLoWord(landscape, empty)))
-        && t.checkExpect(list2.addToEnd(shop), new ConsLoWord(marine,
-            new ConsLoWord(plant, new ConsLoWord(shop, empty))))
-        && t.checkExpect(activeWords.addToEnd(sandwich),
-            new ConsLoWord(shop, new ConsLoWord(marine, new ConsLoWord(plant,
-                new ConsLoWord(sandwich, empty)))));
+               && t.checkExpect(list1.addToEnd(landscape), new ConsLoWord(plant,
+        new ConsLoWord(landscape, empty)))
+               && t.checkExpect(list2.addToEnd(shop), new ConsLoWord(marine,
+        new ConsLoWord(plant, new ConsLoWord(shop, empty))))
+               && t.checkExpect(activeWords.addToEnd(sandwich),
+        new ConsLoWord(shop, new ConsLoWord(marine, new ConsLoWord(plant,
+            new ConsLoWord(sandwich, empty)))));
   }
 
   // to test the filterOutEmpties() method
   boolean testFilterOutEmpties(Tester t) {
     return t.checkExpect(empty.filterOutEmpties(), empty)
-        && t.checkExpect(mixedWords.filterOutEmpties(), mixedWords)
-        && t.checkExpect(listWithEmpty.filterOutEmpties(), mList1)
-        && t.checkExpect(multipleEmpty.filterOutEmpties(), mList1);
+               && t.checkExpect(mixedWords.filterOutEmpties(), mixedWords)
+               && t.checkExpect(listWithEmpty.filterOutEmpties(), mList1)
+               && t.checkExpect(multipleEmpty.filterOutEmpties(), mList1);
   }
 
   // to test the draw() method
   boolean testDraw(Tester t) {
     return t.checkExpect(empty.draw(start), start)
-        && t.checkExpect(list1.draw(start),
-            start.placeImageXY(new TextImage("plant", 20, Color.BLUE), 10, 10))
-        && t.checkExpect(mList1.draw(start),
-            start.placeImageXY(new TextImage("palace", 20, Color.GRAY), 30, 0)
+               && t.checkExpect(list1.draw(start),
+        start.placeImageXY(new TextImage("plant", 20, Color.BLUE), 10, 10))
+               && t.checkExpect(mList1.draw(start),
+        start.placeImageXY(new TextImage("palace", 20, Color.GRAY), 30, 0)
             .placeImageXY(new TextImage("shop", 20, Color.BLUE), 15, 5)
             .placeImageXY(new TextImage("marine", 20, Color.BLUE), 20, 10)
             .placeImageXY(new TextImage("plant", 20, Color.BLUE), 10, 10));
@@ -504,35 +455,56 @@ class ExamplesWordLists {
   // than just using the getter. however, i'd rly like to know how. :(
   boolean testGetWord(Tester t) {
     return t.checkExpect(palace.getWord(), "palace")
-        && t.checkExpect(emptyWord.getWord(), "")
-        && t.checkExpect(plant.getWord(), "plant");
+               && t.checkExpect(emptyWord.getWord(), "")
+               && t.checkExpect(plant.getWord(), "plant");
   }
 
   // to test the checkLetter() method.
   boolean testCheckLetter(Tester t) {
     return t.checkExpect(marine.checkLetter("m"), new ActiveWord("arine", 20, 10))
-        && t.checkExpect(landscape.checkLetter("l"), new InactiveWord("andscape", 0, 0))
-        && t.checkExpect(emptyWord.checkLetter("a"), emptyWord)
-        && t.checkExpect(palace.checkLetter("m"), palace);
+               && t.checkExpect(landscape.checkLetter("l"), new ActiveWord("andscape", 0, 0))
+               && t.checkExpect(emptyWord.checkLetter("a"), emptyWord)
+               && t.checkExpect(palace.checkLetter("m"), palace);
   }
 
   // to test the checkEmpty() method.
   boolean testCheckEmpty(Tester t) {
     return t.checkExpect(marine.checkEmpty(), false)
-        && t.checkExpect(emptyWord.checkEmpty(), true)
-        && t.checkExpect(landscape.checkEmpty(), false);
+               && t.checkExpect(emptyWord.checkEmpty(), true)
+               && t.checkExpect(landscape.checkEmpty(), false);
   }
 
   // to test the createWorld() method.
   boolean testCreateWorld(Tester t) {
     return t.checkExpect(marine.createWorld(start),
         start.placeImageXY(new TextImage("marine", 20, Color.BLUE), 20, 10))
-        && t.checkExpect(landscape.createWorld(start),
-            start.placeImageXY(new TextImage("landscape", 20, Color.GRAY), 0, 0))
-        && t.checkExpect(palace.createWorld(landscape.createWorld(start)),
-            landscape.createWorld(start).placeImageXY(new TextImage("palace", 20, Color.GRAY),
-                30, 0))
-        && t.checkExpect(emptyWord.createWorld(start), start);
+               && t.checkExpect(landscape.createWorld(start),
+        start.placeImageXY(new TextImage("landscape", 20, Color.GRAY), 0, 0))
+               && t.checkExpect(palace.createWorld(landscape.createWorld(start)),
+        landscape.createWorld(start).placeImageXY(new TextImage("palace", 20, Color.GRAY),
+            30, 0))
+               && t.checkExpect(emptyWord.createWorld(start), start);
+  }
+
+  boolean testMove(Tester t) {
+    return t.checkExpect(list2.move(), new ConsLoWord(new ActiveWord("marine", 20, 20),
+        new ConsLoWord(new ActiveWord("plant", 10, 20), new MtLoWord())));
+  }
+
+  boolean testMoveWord(Tester t){
+    return t.checkExpect(plant.moveWord(), new ActiveWord("plant", 10, 20));
+  }
+
+  boolean testAnyWordAtBottom(Tester t) {
+    return t.checkExpect(list1.anyWordAtBottom(), false);
+  }
+
+  boolean testAtBottom(Tester t) {
+    return t.checkExpect(new ActiveWord("word", 10, 0).atBottom(), false)
+        && t.checkExpect(new ActiveWord("word", 10, 500).atBottom(), true)
+        && t.checkExpect(new InactiveWord("word", 10, 0).atBottom(), false)
+        && t.checkExpect(new InactiveWord("word", 10, 500).atBottom(), true);
+
   }
 
 }
