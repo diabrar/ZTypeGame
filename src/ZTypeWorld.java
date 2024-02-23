@@ -172,6 +172,7 @@ class ExamplesZTypeWorld {
   ZTypeWorld smallWorldDiffRand = new ZTypeWorld(this.shortActInact, new Random(2));
   ZTypeWorld emptyWorld = new ZTypeWorld(empty);
 
+
   // to test the MakeScene() method.
   boolean testMakeScene(Tester t) {
     return t.checkExpect(smallWorld.makeScene(),
@@ -225,9 +226,11 @@ class ExamplesZTypeWorld {
         && t.checkExpect(new Utils().generateWordAcc(new Random(2), "i"), "iiwpro")
         && t.checkExpect(new Utils().generateWordAcc(new Random(3), "hel"), "heljkk");
   }
+
+  // to test the onTick() method.
   boolean testOnTick(Tester t) {
     return t.checkExpect(emptyWorld.onTickForTesting(), new ZTypeWorld(new ConsLoWord(
-        new InactiveWord(new Utils().generateWord(new Random(2)), 50, 105), new MtLoWord())));
+        new InactiveWord(new Utils().generateWord(new Random(2)), 50, 110), new MtLoWord())));
   }
 
   boolean testOnKeyEvent(Tester t) {
@@ -242,6 +245,41 @@ class ExamplesZTypeWorld {
     return c1.drawScene(world1.makeScene()) && c1.show();
   }
 
+  // to test the randomNum() method
+  // if min and max are the same, it should return that number.
+  boolean testRandomNum(Tester t) {
+    return t.checkExpect(new Utils().randomNum(2,2), 2)
+        && t.checkExpect(new Utils().randomNum(5,5), 5)
+        && t.checkExpect(new Utils().randomNum(100020, 100020), 100020);
+  }
+
+  // to test the gameOver() method
+  boolean testGameOver(Tester t) {
+    return t.checkExpect(world1.gameOver(), false)
+        && t.checkExpect(new ZTypeWorld(new ConsLoWord(new InactiveWord("word", 10, 500),
+        this.activeAndInactive)).gameOver(), true);
+  }
+
+  // to test the finalScene() method (it returns the same thing every time)
+  boolean testFinalScene(Tester t) {
+    return t.checkExpect(world1.finalScene(),
+        new WorldScene(IZTypeWorld.SCREEN_WIDTH, IZTypeWorld.SCREEN_HEIGHT)
+        .placeImageXY(new RectangleImage(IZTypeWorld.SCREEN_WIDTH, IZTypeWorld.SCREEN_HEIGHT, "solid", IZTypeWorld.BACKGROUND_COLOR),
+        250, 250)
+        .placeImageXY(new TextImage("Game over!", 70, Color.RED), 240, 200)
+        .placeImageXY(new TextImage("nice try :)", 40, Color.WHITE), 240, 300));
+  }
+
+  // to test the worldEnds() method
+  boolean testWorldEnds(Tester t) {
+    return t.checkExpect(world1.worldEnds(), new WorldEnd(false, world1.makeScene()))
+        && t.checkExpect(new ZTypeWorld(new ConsLoWord(new InactiveWord("word", 10, 500),
+        this.activeAndInactive)).worldEnds(),
+        new WorldEnd(true, new ZTypeWorld(new ConsLoWord(new InactiveWord("word", 10, 500),
+            this.activeAndInactive)).finalScene()));
+  }
+
+  // to play the actual game.
   boolean testBigBang(Tester t) {
     return emptyWorld.bigBang(IZTypeWorld.SCREEN_WIDTH, IZTypeWorld.SCREEN_HEIGHT, IZTypeWorld.TICK);
   }

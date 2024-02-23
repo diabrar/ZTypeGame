@@ -1,0 +1,4 @@
+How to play:
+The game should start automatically upon running ZTypeWorld. As words pop up, type the letters you
+see to begin to type words away. After you finish typing out a word, it will disappear.
+If you let a word hit the bottom, the game will end.
