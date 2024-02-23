@@ -68,7 +68,7 @@ class ZTypeWorld extends World implements IZTypeWorld {
   // JUST for the tests :)
   public World onTickForTesting() {
     ILoWord add = new ConsLoWord(new InactiveWord(new Utils().generateWord(new Random(2)),
-    50, 100), this.words);
+        50, 100), this.words);
     return new ZTypeWorld(add.move());
   }
 
@@ -89,8 +89,8 @@ class ZTypeWorld extends World implements IZTypeWorld {
   // produce the ending scene.
   public WorldScene finalScene() {
     return new WorldScene(SCREEN_WIDTH, SCREEN_HEIGHT)
-               .placeImageXY(new RectangleImage(SCREEN_WIDTH, SCREEN_HEIGHT, "solid", BACKGROUND_COLOR),
-                   250, 250)
+               .placeImageXY(new RectangleImage(SCREEN_WIDTH, SCREEN_HEIGHT, "solid",
+                       BACKGROUND_COLOR), 250, 250)
                .placeImageXY(new TextImage("Game over!", 70, Color.RED), 240, 200)
                .placeImageXY(new TextImage("nice try :)", 40, Color.WHITE), 240, 300);
   }
@@ -134,7 +134,7 @@ class Utils {
   }
 
   public int randomNum(int min, int max) {
-    return (int) (Math.random() * (max-min + 1)) + min;
+    return (int) (Math.random() * (max - min + 1)) + min;
   }
 
 }
@@ -264,8 +264,8 @@ class ExamplesZTypeWorld {
   boolean testFinalScene(Tester t) {
     return t.checkExpect(world1.finalScene(),
         new WorldScene(IZTypeWorld.SCREEN_WIDTH, IZTypeWorld.SCREEN_HEIGHT)
-        .placeImageXY(new RectangleImage(IZTypeWorld.SCREEN_WIDTH, IZTypeWorld.SCREEN_HEIGHT, "solid", IZTypeWorld.BACKGROUND_COLOR),
-        250, 250)
+        .placeImageXY(new RectangleImage(IZTypeWorld.SCREEN_WIDTH, IZTypeWorld.SCREEN_HEIGHT,
+                "solid", IZTypeWorld.BACKGROUND_COLOR), 250, 250)
         .placeImageXY(new TextImage("Game over!", 70, Color.RED), 240, 200)
         .placeImageXY(new TextImage("nice try :)", 40, Color.WHITE), 240, 300));
   }
@@ -281,7 +281,8 @@ class ExamplesZTypeWorld {
 
   // to play the actual game.
   boolean testBigBang(Tester t) {
-    return emptyWorld.bigBang(IZTypeWorld.SCREEN_WIDTH, IZTypeWorld.SCREEN_HEIGHT, IZTypeWorld.TICK);
+    return emptyWorld.bigBang(IZTypeWorld.SCREEN_WIDTH, IZTypeWorld.SCREEN_HEIGHT,
+        IZTypeWorld.TICK);
   }
 
 }

@@ -491,12 +491,15 @@ class ExamplesWordLists {
         new ConsLoWord(new ActiveWord("plant", 10, 20), new MtLoWord())));
   }
 
-  boolean testMoveWord(Tester t){
-    return t.checkExpect(plant.moveWord(), new ActiveWord("plant", 10, 20));
+  boolean testMoveWord(Tester t) {
+    return t.checkExpect(plant.moveWord(), new ActiveWord("plant", 10, 20))
+        && t.checkExpect(marine.moveWord(), new ActiveWord("marine", 20, 20));
   }
 
   boolean testAnyWordAtBottom(Tester t) {
-    return t.checkExpect(list1.anyWordAtBottom(), false);
+    return t.checkExpect(list1.anyWordAtBottom(), false)
+        && t.checkExpect(new ConsLoWord(
+            new ActiveWord("word", 10, 500), list1).anyWordAtBottom(), true);
   }
 
   boolean testAtBottom(Tester t) {
