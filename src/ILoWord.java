@@ -258,7 +258,7 @@ class ActiveWord implements IWord {
     /* TEMPLATE
      * EVERYTHING IN THE CLASS TEMPLATE *
      */
-    return this.word.equals("");
+    return this.word.isEmpty();
   }
 
   public WorldScene createWorld(WorldScene initWorld) {
@@ -335,7 +335,7 @@ class InactiveWord implements IWord {
     /* TEMPLATE
      * EVERYTHING IN THE CLASS TEMPLATE *
      */
-    return this.word.equals("");
+    return this.word.isEmpty();
   }
 
   public WorldScene createWorld(WorldScene initWorld) {
